@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: Best Deal AI API
+  description: Production Backend API for Best Deal AI / SmartPrice AI Assistant (Node.js, Express, PostgreSQL, Prisma, Gemini AI)
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Development Server
+  - url: http://localhost:5000/api/v1
+    description: Production Version 1 API Base
+paths:
+  /api/health:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Server is healthy
+  /api/health/ready:
+    get:
+      summary: Readiness check (PostgreSQL DB Ping)
+      responses:
+        '200':
+          description: Database is connected and ready
+        '503':
+          description: Database is unreachable
+  /api/v1/auth/register:
+    post:
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Validation error
+        '409':
+          description: Email already exists
+  /api/v1/auth/login:
+    post:
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authenticated successfully, returns Bearer token
+        '401':
+          description: Invalid email or password
+  /api/v1/users/me:
+    get:
+      summary: Get current authenticated user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+        '401':
+          description: Unauthorized
+  /api/v1/products:
+    get:
+      summary: Query paginated product catalog
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: brand
+          schema: { type: string }
+        - in: query
+          name: platform
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        '200':
+          description: List of products with pagination metrics
+  /api/v1/products/{id}:
+    get:
+      summary: Get product details by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Product details
+        '404':
+          description: Product not found
+  /api/v1/products/{id}/prices:
+    get:
+      summary: Get multi-platform retailer prices for product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Array of platform prices
+  /api/v1/products/{id}/price-history:
+    get:
+      summary: Get historical price trajectory and stats
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Price history points and min/max/avg stats
+  /api/v1/products/{id}/ai-analysis:
+    post:
+      summary: Request Gemini AI price analysis (DB cached)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: AI recommendation decision, confidence, and reasoning
+  /api/v1/alerts:
+    get:
+      summary: Get authenticated user's price drop alerts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Array of budget alerts
+    post:
+      summary: Create target price alert
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, targetPrice]
+              properties:
+                productId: { type: string }
+                targetPrice: { type: number }
+      responses:
+        '201':
+          description: Price alert created
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

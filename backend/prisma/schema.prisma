@@ -1,0 +1,122 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PurchaseDecision {
+  BUY_NOW
+  WAIT
+  PRICE_INCREASE
+}
+
+enum AlertStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         String       @default("USER")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  alerts       PriceAlert[]
+
+  @@map("users")
+}
+
+model Product {
+  id                 String          @id @default(uuid())
+  name               String
+  brand              String
+  category           String
+  description        String?
+  imageUrl           String?
+  productUrl         String?
+  currentPrice       Float           @default(0)
+  originalPrice      Float?
+  discountPercentage Float?
+  rating             Float?          @default(4.5)
+  reviewCount        Int?            @default(0)
+  platform           String?         @default("Amazon")
+  inStock            Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  prices             PlatformPrice[]
+  history            PriceHistory[]
+  analyses           AIAnalysis[]
+  alerts             PriceAlert[]
+
+  @@index([category])
+  @@index([brand])
+  @@map("products")
+}
+
+model PlatformPrice {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  platform           String
+  price              Float
+  originalPrice      Float?
+  discountPercentage Float?
+  productUrl         String?
+  availability       Boolean  @default(true)
+  checkedAt          DateTime @default(now())
+
+  @@index([productId])
+  @@index([platform])
+  @@map("platform_prices")
+}
+
+model PriceHistory {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  platform   String   @default("Amazon")
+  price      Float
+  recordedAt DateTime @default(now())
+
+  @@index([productId, recordedAt])
+  @@map("price_histories")
+}
+
+model AIAnalysis {
+  id                String           @id @default(uuid())
+  productId         String
+  product           Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currentPrice      Float
+  predictedPrice    Float
+  decision          PurchaseDecision
+  confidence        Int
+  reasoning         String[]
+  discountAuthentic Boolean          @default(true)
+  discountScore     Int              @default(80)
+  createdAt         DateTime         @default(now())
+
+  @@index([productId, createdAt])
+  @@map("ai_analyses")
+}
+
+model PriceAlert {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  targetPrice Float
+  status      AlertStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  triggeredAt DateTime?
+
+  @@index([userId])
+  @@index([productId])
+  @@map("price_alerts")
+}

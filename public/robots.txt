@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /alerts
+Disallow: /profile
+Disallow: /settings
+Disallow: /login
+Disallow: /register
+
+Sitemap: http://localhost:5000/sitemap.xml
